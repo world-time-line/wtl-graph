@@ -135,6 +135,7 @@ def sql_gen_create_Feeder():
     lst.append( ('1.0.0', ''' CREATE TABLE 'Feeder' (
         'feeder_upn'	TEXT NOT NULL,
         'feeder_name'	TEXT NOT NULL,
+        'feeder_type'	TEXT,
         'description'	TEXT,
         'last_modified_timestamp'	TEXT,
         PRIMARY KEY('feeder_upn')
