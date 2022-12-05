@@ -1,21 +1,18 @@
 
 from datetime import datetime
 import sqlite3
-from tokenize import String
 from operator import itemgetter
 from typing import List
 
-def detect_latest_ver_from_script_list(list : List, known_latest : String):
+def detect_latest_ver_from_script_list(list : List, default_latest : str='0.0.0'):
     max_ver =  max(list, key=itemgetter(1) )[0];
-    if max_ver > known_latest:
+    if max_ver > default_latest:
         return max_ver;
-    return known_latest;
+    return default_latest;
 
-def create_latest():
+def create_db_ver(db_name, target_ver):
 
-    latest_ver = '0.0.0' 
-
-    conn = sqlite3.connect('event.sqlite')
+    conn = sqlite3.connect(db_name + '.sqlite')
     if table_exists(conn, "__ver") == False:
         print('"__ver" Table does not exist. Creating it...');
         conn.execute('''CREATE TABLE __ver
@@ -28,25 +25,28 @@ def create_latest():
     sql_stmt = sql_stmt + sql_gen_create_Domain();
     sql_stmt = sql_stmt + sql_gen_create_Subject();
     sql_stmt = sql_stmt + sql_gen_create_Occurance();
-    
-    latest_ver = detect_latest_ver_from_script_list(sql_stmt, latest_ver); 
+    sql_stmt += sql_gen_create_Feeder() + sql_gen_create_Source();
+
+    # if target version is at base or not specified set target version to latest in d scripts
+    if target_ver == '0.0.0' or target_ver == None : 
+        target_ver = detect_latest_ver_from_script_list(sql_stmt); 
 
     #get infile schema version
     current_ver = get_ver(conn);
     print("Current schema version: {}\n".format( current_ver));
 
     #if not latest roll forward
-    if current_ver < latest_ver:      
-        print("Bringing schema to version: {}\n".format (latest_ver));
+    if current_ver < target_ver:      
+        print("Bringing schema to version: {}\n".format (target_ver));
         for migration_ver, sql in sql_stmt:
-            if current_ver < migration_ver:
+            if migration_ver <= target_ver and migration_ver > current_ver:
                 conn.execute(sql);
-        conn.execute("UPDATE __ver set date='" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "', ver='" + latest_ver + "'")
+        conn.execute("UPDATE __ver set date='" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "', ver='" + target_ver + "'")
 
     conn.commit()
     conn.close()
 
-def table_exists(conn :sqlite3.Connection, table_name :String):
+def table_exists(conn :sqlite3.Connection, table_name :str):
     result = False;
     c = conn.cursor()
     #get the count of tables with the name
@@ -79,7 +79,7 @@ def sql_gen_create_Domain():
                 );'''
             ));
     lst.append(
-            ('2.0.0',
+            ('1.0.0',
                 ''' INSERT INTO Domain Values('Person', 'Domain for people');''' 
             ));
     return lst;
@@ -112,9 +112,34 @@ def sql_gen_create_Occurance():
         'confidence'	REAL,
         'last_modified_timestamp'	TEXT,
         'last_modified_by_upn'	TEXT,
-        PRIMARY KEY('event_subject_id','event_verb','year','month','day','hour','minute','second')
+        PRIMARY KEY('year','month','day','hour','minute','second','event_subject_id','event_verb')
         ) WITHOUT ROWID;'''));
     return lst;
 
-create_latest()
+def sql_gen_create_Source():
+    lst = list();
+    lst.append( ('1.0.0', ''' CREATE TABLE 'Source' (
+        'occurance_hash'	TEXT NOT NULL,
+        'event_subject_id'	TEXT NOT NULL,
+        'feeder_upn'	TEXT NOT NULL,
+        'source_url'	TEXT NOT NULL,
+        'confidence'	REAL,
+        'last_modified_timestamp'	TEXT,
+        PRIMARY KEY('occurance_hash')
+        ) WITHOUT ROWID;'''));
+    return lst;
+
+
+def sql_gen_create_Feeder():
+    lst = list();
+    lst.append( ('1.0.0', ''' CREATE TABLE 'Feeder' (
+        'feeder_upn'	TEXT NOT NULL,
+        'feeder_name'	TEXT NOT NULL,
+        'description'	TEXT,
+        'last_modified_timestamp'	TEXT,
+        PRIMARY KEY('feeder_upn')
+        ) WITHOUT ROWID;'''));
+    return lst;
+
+create_db_ver('event', None)
 
