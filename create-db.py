@@ -2,8 +2,11 @@
 from datetime import datetime
 import sqlite3
 from operator import itemgetter
-from typing import List
+from typing import Any, List
+import argparse
+from unicodedata import name
 
+    
 def detect_latest_ver_from_script_list(list : List, default_latest : str='0.0.0'):
     max_ver =  max(list, key=itemgetter(1) )[0];
     if max_ver > default_latest:
@@ -142,5 +145,13 @@ def sql_gen_create_Feeder():
         ) WITHOUT ROWID;'''));
     return lst;
 
-create_db_ver('event', None)
+def main():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--database-name', type=str, required=False, default="event")
+    argparser.add_argument('--target-version', type=str, required=False) #if not specified latest is assumed
 
+    args = argparser.parse_args()    
+    create_db_ver(args.database_name, args.target_version)
+    
+if __name__ == "__main__":
+    main()
