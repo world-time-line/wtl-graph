@@ -6,6 +6,7 @@ from typing import Any, List
 import argparse
 from unicodedata import name
 
+DATA_STORE_SRC = './data-store/'
     
 def detect_latest_ver_from_script_list(list : List, default_latest : str='0.0.0'):
     max_ver =  max(list, key=itemgetter(1) )[0];
@@ -15,7 +16,7 @@ def detect_latest_ver_from_script_list(list : List, default_latest : str='0.0.0'
 
 def create_db_ver(db_name, target_ver):
 
-    conn = sqlite3.connect(db_name + '.sqlite')
+    conn = sqlite3.connect(DATA_STORE_SRC + db_name + '.sqlite')
     if table_exists(conn, "__ver") == False:
         print('"__ver" Table does not exist. Creating it...');
         conn.execute('''CREATE TABLE __ver
